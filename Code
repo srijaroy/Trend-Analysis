@@ -1,0 +1,53 @@
+import os
+import pymannkendall as mk
+import pandas as pd
+import numpy as np
+
+# Directory locations
+input_directory = r'F:\Paper_Final_1\Paper_4\Annual_Rainfall_Files\Kerala\Station_Wise_Data'
+output_file = r'F:\Paper_Final_1\Paper_4\Annual_Rainfall_Files\Kerala\Station_Wise_Data\Mann-kendall\MMK_result.xlsx'
+
+# Function definition to process data from each file
+def process_file(file_path):
+    # Read the data from the file based on its extension
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        # Placeholder for other file types or error handling
+        df = pd.DataFrame()
+
+    # Replace missing data or non-numeric with np.nan
+    df = df.replace({pd.NA: np.nan, '': np.nan})
+
+    # Perform the modified mann-kendall test and Sen's slope test on each column
+    results = []
+    for column in df.columns:
+        if column != 'Year':
+            data = df[column].dropna().values
+            modified_mann_kendall_result = mk.hamed_rao_modification_test(data)
+            sens_slope_result = mk.sens_slope(data)
+
+            results.append({
+                'file_name': os.path.basename(file_path),
+                'time_series': column,
+                'trend': modified_mann_kendall_result.trend,
+                'p_value': modified_mann_kendall_result.p,
+                'z_score': modified_mann_kendall_result.z,
+                'tau': modified_mann_kendall_result.Tau,
+                'sens_slope': sens_slope_result[0],
+            })
+
+    return results 
+
+results_data = []
+
+# Process each file in the input directory
+for file_name in os.listdir(input_directory):
+    if file_name.endswith('.csv'):  # Adjust this condition for other file types if needed
+        file_path = os.path.join(input_directory, file_name)
+        results_data.extend(process_file(file_path))
+
+results_df = pd.DataFrame(results_data)
+
+# Save the results to an Excel file, default engine should handle this correctly
+results_df.to_excel(output_file, index=False)
